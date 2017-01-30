@@ -50,12 +50,14 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
     protected int stepTitleTextColor;
     protected int stepSubtitleTextColor;
     protected int buttonTextColor;
+    protected String submitText = getResources().getString(R.string.vertical_form_stepper_form_confirm_button);
     protected int buttonPressedTextColor;
     protected int errorMessageTextColor;
     protected boolean displayBottomNavigation;
     protected boolean materialDesignInDisabledSteps;
     protected boolean hideKeyboard;
     protected boolean showVerticalLineWhenStepsAreCollapsed;
+    protected boolean isNonLinear;
 
     // Views
     protected LayoutInflater mInflater;
@@ -337,6 +339,20 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
     }
 
     /**
+     * Go to the selected step regardless of whether previous steps are completed
+     * @param stepNumber the selected step number (counting from 0)
+     * @param restoration true if the method has been called to restore the form; false otherwise
+     */
+    public void goToStepNonLinear(int stepNumber, boolean restoration) {
+        if (activeStep != stepNumber || restoration) {
+            if(hideKeyboard) {
+                hideSoftKeyboard();
+            }
+            openStep(stepNumber, restoration);
+        }
+    }
+
+    /**
      * Set the active step as not completed
      * @deprecated use {@link #setActiveStepAsUncompleted(String)} instead
      */
@@ -375,10 +391,11 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
     public void initialiseVerticalStepperForm(String[] stepsTitles,
                                               int colorPrimary, int colorPrimaryDark,
                                               VerticalStepperForm verticalStepperForm,
-                                              Activity activity) {
+                                              Activity activity,String submitText) {
 
         this.alphaOfDisabledElements = 0.25f;
         this.buttonTextColor = Color.rgb(255, 255, 255);
+        this.submitText = submitText;
         this.buttonPressedTextColor = Color.rgb(255, 255, 255);
         this.stepNumberTextColor = Color.rgb(255, 255, 255);
         this.stepTitleTextColor = Color.rgb(33, 33, 33);
@@ -428,11 +445,12 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
                                               int buttonPressedBackgroundColor, int buttonPressedTextColor,
                                               int stepNumberBackgroundColor, int stepNumberTextColor,
                                               VerticalStepperForm verticalStepperForm,
-                                              Activity activity) {
+                                              Activity activity,String submitText) {
 
         this.alphaOfDisabledElements = 0.25f;
         this.buttonBackgroundColor = buttonBackgroundColor;
         this.buttonTextColor = buttonTextColor;
+        this.submitText = submitText;
         this.buttonPressedBackgroundColor = buttonPressedBackgroundColor;
         this.buttonPressedTextColor = buttonPressedTextColor;
         this.stepNumberBackgroundColor = stepNumberBackgroundColor;
@@ -464,11 +482,13 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
         this.stepTitleTextColor = builder.stepTitleTextColor;
         this.stepSubtitleTextColor = builder.stepSubtitleTextColor;
         this.buttonTextColor = builder.buttonTextColor;
+        this.submitText = builder.submitText;
         this.buttonPressedTextColor = builder.buttonPressedTextColor;
         this.errorMessageTextColor = builder.errorMessageTextColor;
         this.displayBottomNavigation = builder.displayBottomNavigation;
         this.materialDesignInDisabledSteps = builder.materialDesignInDisabledSteps;
         this.hideKeyboard = builder.hideKeyboard;
+        this.isNonLinear = builder.isNonLinear;
         this.showVerticalLineWhenStepsAreCollapsed = builder.showVerticalLineWhenStepsAreCollapsed;
 
         initStepperForm(builder.steps, builder.stepsSubtitles);
@@ -575,7 +595,8 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
 
         disableConfirmationButton();
 
-        confirmationButton.setText(R.string.vertical_form_stepper_form_confirm_button);
+        confirmationButton.setText( submitText);
+
         confirmationButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -629,7 +650,11 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
         stepHeader.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                goToStep(stepNumber, false);
+                if(isNonLinear) {
+                    goToStepNonLinear(stepNumber, false);
+                } else {
+                    goToStep(stepNumber, false);
+                }
             }
         });
 
@@ -1026,11 +1051,13 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
         protected int stepTitleTextColor = Color.rgb(33, 33, 33);
         protected int stepSubtitleTextColor = Color.rgb(162, 162, 162);
         protected int buttonTextColor = Color.rgb(255, 255, 255);
+        protected String submitText ;
         protected int buttonPressedTextColor = Color.rgb(255, 255, 255);
         protected int errorMessageTextColor = Color.rgb(175, 18, 18);
         protected boolean displayBottomNavigation = true;
         protected boolean materialDesignInDisabledSteps = false;
         protected boolean hideKeyboard = true;
+        protected boolean isNonLinear = true;
         protected boolean showVerticalLineWhenStepsAreCollapsed = false;
 
         protected Builder(VerticalStepperFormLayout stepperLayout,
@@ -1042,6 +1069,7 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
             this.steps = steps;
             this.verticalStepperFormImplementation = stepperImplementation;
             this.activity = activity;
+            this.submitText=activity.getResources().getString(R.string.vertical_form_stepper_form_confirm_button);
         }
 
         /**
@@ -1163,6 +1191,16 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
         }
 
         /**
+         * Set the text of the last button
+         * @param buttonText text value of the submit button
+         * @return the builder instance
+         */
+        public Builder submitText(String buttonText) {
+            this.submitText= buttonText;
+            return this;
+        }
+
+        /**
          * Set the text color of the buttons when clicked
          * @param buttonPressedTextColor text color of the buttons when clicked
          * @return the builder instance
@@ -1209,6 +1247,17 @@ public class VerticalStepperFormLayout extends RelativeLayout implements View.On
          */
         public Builder hideKeyboard(boolean hideKeyboard) {
             this.hideKeyboard = hideKeyboard;
+            return this;
+        }
+
+        /**
+         * Specify whether or not the form should be nonlinear meaning user can jump to other
+         * steps without previous steps being completed
+         * @param isNonLinear true to be nonlinear; false to not
+         * @return the builder instance
+         */
+        public Builder makeNonLinear(boolean isNonLinear) {
+            this.isNonLinear = isNonLinear;
             return this;
         }
 
